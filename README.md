@@ -12,7 +12,8 @@ os_ai_ops/
 │   │   ├── __init__.py
 │   │   ├── processor.py    # 意图识别与处理
 │   │   ├── entity_extractor.py  # 实体提取
-│   │   └── response_generator.py  # 回复生成
+│   │   ├── response_generator.py  # 回复生成
+│   │   └── trainer.py      # 模型训练
 │   ├── data/               # 数据采集模块
 │   │   ├── __init__.py
 │   │   └── system_monitor/ # 系统监控子模块（原独立项目）
