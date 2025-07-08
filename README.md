@@ -1,3 +1,4 @@
+```text  
 os_ai_ops/
 ├── app/
 │   ├── cli.py              # 命令行交互入口
@@ -46,3 +47,4 @@ os_ai_ops/
 ├── logs/                   # 日志输出
 ├── requirements.txt        # 依赖清单
 └── README.md               # 使用文档
+```
