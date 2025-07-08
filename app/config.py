@@ -1,22 +1,17 @@
-# 全局配置
-# 功能：集中管理系统配置参数
-# 核心配置项：
-# 日志级别与路径
-# 模型存储路径
-# 数据采集频率
-# 日志文件路径
-# 安全白名单（允许执行的命令、脚本）
-# 设计模式：单例模式，全局共享配置实例
 import os
+
 
 class Config:
     DEBUG = False
     LOG_LEVEL = "INFO"
-    LOG_FILE = "logs/aiops.log"
+
+    # 获取项目根目录（假设Config类位于app/utils/config.py中）
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    LOG_FILE = os.path.join(BASE_DIR, "logs", "aiops.log")
 
     # 模型路径
-    ANOMALY_MODEL_PATH = "models/anomaly_model.joblib"
-    NLP_MODEL_PATH = "models/nlp_model"
+    ANOMALY_MODEL_PATH = os.path.join(BASE_DIR, "models", "anomaly_model.joblib")
+    NLP_MODEL_PATH = os.path.join(BASE_DIR, "models", "nlp_model")
 
     # 数据采集配置
     COLLECT_INTERVAL = 30  # 秒
