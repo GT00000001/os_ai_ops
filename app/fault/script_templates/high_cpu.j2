@@ -1,0 +1,26 @@
+#!/bin/bash
+# 处理高CPU使用率问题
+
+# 查找占用CPU最高的进程
+TOP_PROCESS=$(ps -eo pid,%cpu,cmd --sort=-%cpu | head -n 2 | tail -n 1 | awk '{print $1}')
+
+# 记录进程信息
+echo "高CPU进程: $TOP_PROCESS" >> /var/log/aiops_healing.log
+
+# 尝试优雅地停止进程
+if [ ! -z "$TOP_PROCESS" ]; then
+    echo "尝试停止进程 $TOP_PROCESS" >> /var/log/aiops_healing.log
+    kill -15 $TOP_PROCESS
+
+    # 等待5秒后检查进程是否仍在运行
+    sleep 5
+    if ps -p $TOP_PROCESS > /dev/null; then
+        echo "进程仍在运行，强制终止" >> /var/log/aiops_healing.log
+        kill -9 $TOP_PROCESS
+    else
+        echo "进程已成功停止" >> /var/log/aiops_healing.log
+    fi
+fi
+
+# 检查系统负载
+echo "系统负载: $(uptime)" >> /var/log/aiops_healing.log

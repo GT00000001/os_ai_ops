@@ -1,0 +1,31 @@
+#!/bin/bash
+# 处理高内存使用率问题
+
+# 查找占用内存最高的进程
+TOP_PROCESS=$(ps -eo pid,%mem,cmd --sort=-%mem | head -n 2 | tail -n 1 | awk '{print $1}')
+
+# 记录进程信息
+echo "高内存进程: $TOP_PROCESS" >> /var/log/aiops_healing.log
+
+# 尝试优雅地停止进程
+if [ ! -z "$TOP_PROCESS" ]; then
+    echo "尝试停止进程 $TOP_PROCESS" >> /var/log/aiops_healing.log
+    kill -15 $TOP_PROCESS
+
+    # 等待5秒后检查进程是否仍在运行
+    sleep 5
+    if ps -p $TOP_PROCESS > /dev/null; then
+        echo "进程仍在运行，强制终止" >> /var/log/aiops_healing.log
+        kill -9 $TOP_PROCESS
+    else
+        echo "进程已成功停止" >> /var/log/aiops_healing.log
+    fi
+fi
+
+# 清理缓存
+echo "清理系统缓存" >> /var/log/aiops_healing.log
+sync
+echo 1 > /proc/sys/vm/drop_caches
+
+# 检查内存使用情况
+echo "内存使用情况: $(free -h)" >> /var/log/aiops_healing.log
