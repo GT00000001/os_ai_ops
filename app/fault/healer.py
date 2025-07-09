@@ -9,7 +9,7 @@
 # 自愈流程：诊断 → 生成脚本 → 执行 → 验证
 from app.fault.script_generator import ScriptGenerator
 from app.utils.helpers import run_command
-from app.data.system_monitor.monitor.collector.all_collectors import AllCollectors
+from app.data.collector.all_collectors import AllCollectors
 
 
 class FaultHealer:

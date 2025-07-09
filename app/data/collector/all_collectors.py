@@ -1,9 +1,9 @@
-from app.data.system_monitor.monitor.collector.cpu import CPUCollector
-from app.data.system_monitor.monitor.collector.disk import DiskCollector
-from app.data.system_monitor.monitor.collector.network import NetworkCollector
-from app.data.system_monitor.monitor.collector.system_command import run_shell, collect_top, collect_vmstat, collect_pidstat, \
+from app.data.collector.cpu import CPUCollector
+from app.data.collector.disk import DiskCollector
+from app.data.collector.network import NetworkCollector
+from app.data.collector.system_command import run_shell, collect_top, collect_vmstat, collect_pidstat, \
                                                                      collect_free, collect_df, collect_iostat, collect_ethtool
-from app.data.system_monitor.monitor.collector.log_reader import collect_system_log, collect_kernel_log, collect_app_log
+from app.data.collector.log_reader import collect_system_log, collect_kernel_log, collect_app_log
 
 class AllCollectors:
     def __init__(self):

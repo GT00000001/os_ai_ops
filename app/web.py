@@ -1,7 +1,7 @@
 # Web交互入口
 from flask import Flask, request, jsonify
 from app.nlp.processor import NLPProcessor
-from app.data.system_monitor.monitor.collector.all_collectors import AllCollectors
+from app.data.collector.all_collectors import AllCollectors
 from app.anomaly.detector import AnomalyDetector
 
 app = Flask(__name__)

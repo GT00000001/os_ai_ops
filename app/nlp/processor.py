@@ -8,7 +8,7 @@
 # 简单实现：基于关键词匹配
 # 高级实现：使用微调的 LLM（如 ChatGLM）或 BERT 模型
 
-from app.data.system_monitor.monitor.collector.all_collectors import AllCollectors
+from app.data.collector.all_collectors import AllCollectors
 from app.nlp.entity_extractor import EntityExtractor
 from app.nlp.response_generator import ResponseGenerator
 from app.anomaly.detector import AnomalyDetector
