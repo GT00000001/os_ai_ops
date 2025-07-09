@@ -11,6 +11,7 @@ class AllCollectors:
         self.disk_collector = DiskCollector()
         self.cpu_collector = CPUCollector()
 
+
     def collect_network(self):
         return self.network_collector.collect()
 

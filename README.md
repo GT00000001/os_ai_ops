@@ -15,29 +15,24 @@ os_ai_ops/
 │   │   ├── response_generator.py  # 回复生成
 │   │   └── trainer.py      # 模型训练
 │   ├── data/               # 数据采集模块
-│   │   ├── __init__.py
-│   │   └── system_monitor/ # 系统监控子模块（原独立项目）
-│   │       ├── __init__.py 
-│   │       ├── app.py      
-│   │       ├── create.py   
-│   │       ├── pyproject.toml 
-│   │       ├── config.py   # system_monitor 自身配置（与项目全局配置区分）
-│   │       └── monitor/    # 核心监控逻辑包
-│   │           ├── __init__.py
-│   │           ├── collector/  # 数据采集器
-│   │           │   ├── __init__.py
-│   │           │   ├── all_collectors.py  # 采集器聚合
-│   │           │   ├── base.py            
-│   │           │   ├── cpu.py             # CPU/内存采集
-│   │           │   ├── disk.py            # 磁盘采集
-│   │           │   ├── gpu_domestic.py    
-│   │           │   ├── log_reader.py      # 操作系统日志采集
-│   │           │   ├── network.py         # 网络IO采集
-│   │           │   └── system_command.py  # 系统命令执行工具
-│   │           ├── exporter/  # 数据导出（如REST API）
-│   │           │   └── rest_api.py        # FastAPI 接口
-│   │           └── utils/     # 监控工具包
-│   │               └── os_info.py         
+│   │   ├── utils/          # 数据采集工具包
+│   │   │   ├── __init__.py
+│   │   │   └── os_info.py       
+│   │   ├── collector/      # 数据采集器
+│   │   │   ├── __init__.py
+│   │   │   ├── all_collectors.py  # 采集器聚合
+│   │   │   ├── base.py            # 采集器基类
+│   │   │   ├── cpu.py             # CPU/内存采集
+│   │   │   ├── disk.py            # 磁盘采集
+│   │   │   ├── gpu_domestic.py            
+│   │   │   ├── log_reader.py      # 操作系统日志采集
+│   │   │   ├── network.py         # 网络IO采集
+│   │   │   └── system_command.py  # 系统命令执行工具
+│   │   └── system_monitor/ 
+│   │       └── monitor/ 
+│   │           └── collector/ 
+│   │           └── exporter/ 
+│   │                
 │   ├── anomaly/            # 异常检测模块
 │   │   ├── __init__.py
 │   │   ├── detector.py      # 异常检测模型
