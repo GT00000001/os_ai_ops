@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Run cli.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/app/cli.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "OTHER_VARIABLE": "value"
+            }
+        }
+    ]
+}
