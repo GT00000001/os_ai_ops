@@ -1,155 +1,119 @@
-from typing import Dict, Any, List
-from app.config import config
-from app.utils.logger import get_logger
+import os
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
+from safetensors.torch import load_file as safe_load
+from app.config import Config
+
+# Paths
+BASE_MODEL_DIR = os.path.join(Config.BASE_DIR, 'models', 'deepseek_r1_distill_qwen_7b')
+PEFT_MODEL_DIR = os.path.join(Config.BASE_DIR, 'models', 'train_2025-07-14-14-05-13')
+
+# Device
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+def load_model(base_dir: str, peft_dir: str):
+
+    # 1. 加载基础模型
+    model = AutoModelForCausalLM.from_pretrained(
+        base_dir,
+        trust_remote_code=True,
+        torch_dtype=torch.float16 if device=='cuda' else torch.float32,
+        device_map='auto'
+    )
+    # 2. 查找 LoRA 权重文件 (.bin, .pt, .safetensors)
+    weight_path = None
+    for fname in ('adapter_model.safetensors', 'adapter_model.bin', 'pytorch_model.bin', 'pytorch_model.pt'):
+        p = os.path.join(peft_dir, fname)
+        if os.path.exists(p):
+            weight_path = p
+            break
+    if weight_path is None:
+        raise FileNotFoundError(f"在 {peft_dir} 中未找到 LoRA 权重文件 (.safetensors/.bin/.pt)")
+
+    # 3. 加载权重
+    if weight_path.endswith('.safetensors'):
+        peft_weights = safe_load(weight_path, device=device)
+    else:
+        peft_weights = torch.load(weight_path, map_location=device)
+
+    # 4. 清理前缀并注入模型
+    new_state = {}
+    for k, v in peft_weights.items():
+        # 常见前缀
+        nk = k
+        for prefix in ('base_model.model.model.', 'base_model.', 'model.model.model.', 'model.'):  
+            if nk.startswith(prefix):
+                nk = nk[len(prefix):]
+                break
+        new_state[nk] = v
+    # 仅加载匹配的参数
+    model.load_state_dict(new_state, strict=False)
+    model.eval()
+    return model
 
 
-class ResponseGenerator:
-    def __init__(self):
-        self.logger = get_logger(__name__)
-        self.templates = self._load_response_templates()
+def load_tokenizer(base_dir: str):
+    tokenizer = AutoTokenizer.from_pretrained(
+        base_dir,
+        trust_remote_code=True,
+        use_fast=False
+    )
+    return tokenizer
 
-    def _load_response_templates(self) -> Dict[str, List[str]]:
-        """加载回复模板"""
-        return {
-            "check_metric": [
-                "当前{metric}使用率为{value}%",
-                "{metric}使用率是{value}%",
-                "{metric}的当前值为{value}%"
-            ],
-            "detect_anomaly": [
-                "系统运行正常，未检测到异常",
-                "发现{count}个异常：{details}",
-                "系统存在{severity}级异常：{details}"
-            ],
-            "fix_fault": [
-                "故障已成功修复",
-                "正在尝试修复{fault_type}故障",
-                "修复操作已执行，请检查系统状态",
-                "无法修复问题，请人工干预"
-            ],
-            "check_app_defect": [
-                "应用运行正常，未发现缺陷",
-                "发现{count}个应用缺陷：{details}",
-                "检测到{severity}风险：{details}"
-            ],
-            "unknown": [
-                "抱歉，我不理解您的问题，请换一种表达方式",
-                "请您提供更多信息，以便我更好地回答您",
-                "我无法处理这个请求，请尝试其他问题"
-            ]
-        }
 
-    def generate_response(self, intent: str, entities: Dict[str, Any], data: Dict[str, Any]) -> str:
-        """根据意图、实体和数据生成回复"""
-        # 选择合适的模板组
-        templates = self.templates.get(intent, self.templates["unknown"])
-
-        # 根据数据选择具体模板
-        if intent == "check_metric":
-            template = self._select_metric_template(entities, templates)
-        elif intent == "detect_anomaly":
-            template = self._select_anomaly_template(data, templates)
-        elif intent == "fix_fault":
-            template = self._select_fault_template(data, templates)
-        elif intent == "check_app_defect":
-            template = self._select_defect_template(data, templates)
+def build_prompt(history):
+    prompt = ""
+    for message in history:
+        if message['role'] == 'user':
+            prompt += f"### 用户: {message['content']}\n"
         else:
-            template = templates[0]
+            prompt += f"### 模型: {message['content']}\n"
+    prompt += "### 模型:"
+    return prompt
 
-        # 填充模板变量
-        response = self._fill_template(template, entities, data)
-        return response
 
-    def _select_metric_template(self, entities: Dict[str, Any], templates: List[str]) -> str:
-        """选择指标查询的回复模板"""
-        if "duration" in entities:
-            # 带时间范围的查询
-            return next(
-                (t for t in templates if "{duration}" in t),
-                templates[0]
-            )
-        return templates[0]
+def chat(model, tokenizer, history, max_new_tokens=512, temperature=0.8, top_p=0.9):
 
-    def _select_anomaly_template(self, data: Dict[str, Any], templates: List[str]) -> str:
-        """选择异常检测的回复模板"""
-        if data.get("anomaly_count", 0) == 0:
-            return templates[0]
-        elif data.get("anomaly_severity"):
-            return next(
-                (t for t in templates if "{severity}" in t),
-                templates[1]
-            )
-        return templates[1]
+    history.append({'role': 'assistant', 'content': None})
+    prompt = build_prompt(history[:-1])
+    inputs = tokenizer(
+        prompt,
+        return_tensors='pt'
+    ).to(device)
 
-    def _select_fault_template(self, data: Dict[str, Any], templates: List[str]) -> str:
-        """选择故障修复的回复模板"""
-        if data.get("success", False):
-            return templates[0]
-        elif data.get("fault_type"):
-            return next(
-                (t for t in templates if "{fault_type}" in t),
-                templates[1]
-            )
-        elif data.get("executed", False):
-            return templates[2]
-        return templates[3]
+    generation_config = GenerationConfig(
+        temperature=temperature,
+        top_p=top_p,
+        max_new_tokens=max_new_tokens,
+        do_sample=True,
+        pad_token_id=tokenizer.eos_token_id
+    )
 
-    def _select_defect_template(self, data: Dict[str, Any], templates: List[str]) -> str:
-        """选择应用缺陷检测的回复模板"""
-        if data.get("defect_count", 0) == 0:
-            return templates[0]
-        elif data.get("highest_severity"):
-            return next(
-                (t for t in templates if "{severity}" in t),
-                templates[2]
-            )
-        return templates[1]
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            **generation_config.__dict__
+        )
 
-    def _fill_template(self, template: str, entities: Dict[str, Any], data: Dict[str, Any]) -> str:
-        """填充模板变量"""
-        # 合并实体和数据
-        context = {**entities, **data}
+    response = tokenizer.decode(
+        outputs[0][inputs['input_ids'].shape[-1]:],
+        skip_special_tokens=True
+    ).strip()
 
-        # 特殊处理列表类型的数据
-        if "details" in template and "anomalies" in data:
-            context["details"] = ", ".join([
-                f"{anomaly.get('description', '未知异常')}({anomaly.get('severity', '中等')}风险)"
-                for anomaly in data["anomalies"]
-            ])
+    history[-1]['content'] = response
+    return response
 
-        if "details" in template and "defects" in data:
-            context["details"] = ", ".join([
-                f"{defect.get('description', '应用缺陷')}({defect.get('severity', '中等')}风险)"
-                for defect in data["defects"]
-            ])
 
-        # 填充模板
-        try:
-            return template.format(**context)
-        except KeyError as e:
-            self.logger.error(f"模板填充失败: {e}")
-            return template
-
-    def generate_unknown_response(self) -> str:
-        """生成无法理解请求的回复"""
-        from random import choice
-        return choice(self.templates["unknown"])
-
-    def generate_follow_up(self, intent: str, missing_entity: str) -> str:
-        """生成追问回复"""
-        follow_ups = {
-            "metric": [
-                "您想查询哪种指标？(CPU、内存、磁盘等)",
-                "请问您想了解哪方面的系统信息？"
-            ],
-            "duration": [
-                "您想查询多长时间范围内的数据？",
-                "请问具体时间范围是多少？"
-            ],
-            "application": [
-                "您想检查哪个应用？",
-                "请问具体是哪个应用？"
-            ]
-        }
-
-        return follow_ups.get(missing_entity, ["请提供更多信息"])[0]
+# if __name__ == '__main__':
+#     model = load_model(BASE_MODEL_DIR, PEFT_MODEL_DIR)
+#     tokenizer = load_tokenizer(BASE_MODEL_DIR)
+#
+#     history = []
+#     print("开始对话，输入 '退出' 以结束")
+#     while True:
+#         user_input = input("用户: ")
+#         if user_input.lower() in ['退出', 'exit', 'quit']:
+#             break
+#         history.append({'role': 'user', 'content': user_input})
+#         reply = chat(model, tokenizer, history)
+#         print(f"模型: {reply}\n")

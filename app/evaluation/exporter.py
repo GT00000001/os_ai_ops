@@ -2,15 +2,11 @@ from fastapi import FastAPI
 import os
 import sys
 from app.evaluation.evaluator import ModelEvaluator
+from app.config import Config
 
-# 获取当前文件所在目录
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# 获取 app 目录
-app_dir = os.path.dirname(current_dir)
-# 获取项目根目录
-project_root = os.path.dirname(app_dir)
+
 # 添加项目根目录到Python路径
-sys.path.insert(0, project_root)
+sys.path.insert(0, Config.BASE_DIR)
 
 app = FastAPI(title="Evalution")
 
