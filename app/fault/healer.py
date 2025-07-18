@@ -12,6 +12,11 @@ from app.utils.helpers import run_command
 from app.data.collector.all_collectors import AllCollectors
 
 
+import time
+from app.fault.script_generator import ScriptGenerator
+from app.utils.helpers import run_command
+from app.data.collector.all_collectors import AllCollectors
+
 class FaultHealer:
     def __init__(self):
         self.script_generator = ScriptGenerator()
@@ -33,8 +38,11 @@ class FaultHealer:
 
     def execute_fix(self, script):
         """执行修复脚本"""
+        start_time = time.time()
         result = run_command(script)
-        return result
+        end_time = time.time()
+        execution_time = end_time - start_time
+        return result, execution_time
 
     def verify_fix(self):
         """验证修复效果"""
@@ -43,3 +51,14 @@ class FaultHealer:
         return (metrics["cpu_usage"] < 80 and
                 metrics["memory_usage"] < 80 and
                 metrics["disk_usage"] < 90)
+
+    def heal(self, anomaly):
+        """完整的自愈流程"""
+        start_time = time.time()
+        root_cause = self.diagnose(anomaly)
+        script = self.generate_fix_script(root_cause)
+        result, execution_time = self.execute_fix(script)
+        is_fixed = self.verify_fix()
+        end_time = time.time()
+        analysis_time = end_time - start_time - execution_time
+        return is_fixed, execution_time, analysis_time

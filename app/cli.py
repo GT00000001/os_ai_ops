@@ -2,7 +2,7 @@
 import cmd
 from app.nlp.processor import NLPProcessor
 from app.utils.logger import get_logger
-
+import uvicorn
 
 class AIOpsCLI(cmd.Cmd):
     prompt = "运维管家> "
@@ -25,5 +25,12 @@ class AIOpsCLI(cmd.Cmd):
 
 
 if __name__ == "__main__":
+    uvicorn.run(
+        "app.evaluation.exporter:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,  # 开发模式，生产环境建议移除
+        log_level="info"
+    )
     cli = AIOpsCLI()
     cli.cmdloop()
